@@ -101,7 +101,9 @@ if [[ ${REPLY} =~ ^[Yy]$ ]]; then
         ipa-certupdate
     fi
 
-    sudo yum -y install certbot || sudo apt-get -y install certbot
+
+    yum -y install epel-release
+    yum -y install certbot
     ipa service-add "lets-encrypt/${host}@${realm}"
     ipa role-add "DNS Administrator"
     ipa role-add-privilege "DNS Administrator" --privileges="DNS Administrators"
@@ -111,7 +113,7 @@ if [[ ${REPLY} =~ ^[Yy]$ ]]; then
     ipa-getkeytab -p "lets-encrypt/${host}" -k /etc/lets-encrypt.keytab #add -r to renew
 
     for principal in ${principals} ; do
-        ipa dnsrecord-add "${principal#[a-zA-Z0-9\-\_]*\.}." "_acme-challenge.${principal}." --txt-rec='INITIALIZED'
+        ipa dnsrecord-add "${principal}." "_acme-challenge.${principal}." --txt-rec='INITIALIZED'
     done
 
     # Apply for the initial certificate if script is available
