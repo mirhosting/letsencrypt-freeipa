@@ -105,15 +105,7 @@ fi
 
 load_config ${IPA_CONFIG_FILE} realm domain
 
-#I am not sure if this is the desired logic but
-#sometimes the hosting platform mangles the hostname
-#such that the domain name is provided by the platform
-#instead of my intended hostname
-if [[ -n ${domain} ]]; then
-    host="$(hostname -s).${domain}"
-else
-    host="$(hostname --fqdn)"
-fi
+host="$(hostname --fqdn)"
 
 
 # Get kerberos ticket to modify DNS entries
@@ -128,7 +120,7 @@ if ! kinit -k -t /etc/lets-encrypt.keytab "lets-encrypt/${host}"; then
 fi
 
 #Calculate the domain part of the hostname
-dns_domain_name="${host#*\.}"
+dns_domain_name="${host}"
 if [[ ${dns_domain_name} != ${domain} ]]; then
     errcho "WARNING: ${dns_domain_name} != ${domain}; continuing anyway..."
 fi
@@ -146,7 +138,7 @@ email="${email:-${hostmaster%\.}}"
 
 # Configure the manual auth hook
 # shellcheck disable=2016
-default_auth_hook='ipa dnsrecord-mod ${CERTBOT_DOMAIN#*.}. _acme-challenge.${CERTBOT_DOMAIN}. --txt-rec=${CERTBOT_VALIDATION} && sleep ${dns_propagation_delay}'
+default_auth_hook='ipa dnsrecord-mod ${CERTBOT_DOMAIN}. _acme-challenge.${CERTBOT_DOMAIN}. --txt-rec=${CERTBOT_VALIDATION} && sleep ${dns_propagation_delay:-5}'
 
 # Configure alternative nsupdate hook
 nsupdate_auth_server="${NSUPDATE_AUTH_SERVER:-$(nslookup -type=soa "${dns_domain_name}"  | grep 'origin =' | sed -e 's/[[:space:]]*origin = //')}"
@@ -186,7 +178,8 @@ certbot certonly --quiet \
                  --agree-tos \
                  --email "${email}" \
                  --expand \
-                 --noninteractive
+                 --noninteractive \
+                 --preferred-chain "ISRG Root X1"
 
 #Search for directory containing updated privkey.pem
 #Note, this used to be calculated before the certbot command was executed
